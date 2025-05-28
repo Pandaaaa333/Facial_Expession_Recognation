@@ -80,7 +80,7 @@ Nhờ có độ sâu lớn với nhiều lớp, DCNN có khả năng học các 
 
 # 4. Phương pháp đề xuất
 
-## 4.1 Xây dựng Dataset
+## 4.1. Xây dựng Dataset
 
 - **Thư mục `data`:** Gồm 4 thư mục con mỗi thư mục sẽ có một chức năng riêng.
   
@@ -144,7 +144,7 @@ Sau khi resize, dữ liệu được chuẩn hóa bằng cách chia toàn bộ g
 
 Khi ảnh đã được resize và chuẩn hóa, nó có thể được đưa vào mô hình **CNN** để thực hiện **nhận diện cảm xúc** một cách hiệu quả.
 
-## Kiến trúc mạng DCNN
+## 4.3. Kiến trúc mạng DCNN
 
 Đầu vào là tập `train` và `val` thuộc thư mục `dataset_split` trong đó :
 ###  Tập `train`
@@ -156,4 +156,206 @@ Khi ảnh đã được resize và chuẩn hóa, nó có thể được đưa v�
 - Giúp:
   - Phát hiện **overfitting** (mô hình học quá kỹ trên dữ liệu huấn luyện).
   - Điều chỉnh các **hyperparameters** như số epoch, learning rate, số lớp,...
+
+### Kiến trúc mạng DCNN
+
+Mô hình Deep Convolutional Neural Network (DCNN) được thiết kế từ đầu, không sử dụng transfer learning. Kiến trúc chi tiết như sau:
+
+####  Cấu trúc mạng
+
+- **Lớp tích chập đầu tiên**:  
+  - 64 bộ lọc (filters) kích thước 3x3  
+  - Batch Normalization  
+  - ELU activation
+
+- **Lớp tích chập thứ hai**:  
+  - 64 filters  
+  - Batch Normalization + ELU
+
+- **Lớp pooling đầu tiên**:  
+  - Max Pooling 2x2  
+
+- **Lớp tích chập thứ ba và thứ tư**:  
+  - 128 filters mỗi lớp  
+  - Batch Normalization + ELU
+
+- **Lớp pooling thứ hai**:  
+  - Max Pooling 2x2  
+
+- **Lớp tích chập thứ năm và thứ sáu**:  
+  - 256 filters mỗi lớp  
+  - Batch Normalization + ELU
+
+- **Lớp pooling thứ ba**:  
+  - Max Pooling 2x2  
+  - Dropout layer để tránh overfitting
+
+#### Fully Connected Layers
+
+- **Flatten layer**: Chuyển đổi đầu ra sang vector 1 chiều  
+- **Dense layer**:  
+  - 128 nơ-ron  
+  - ELU activation  
+  - Batch Normalization  
+  - Dropout layer  
+
+- **Lớp đầu ra**:  
+  - 7 nơ-ron (tương ứng 7 cảm xúc)  
+  - Softmax activation
+
+---
+
+#### Tối ưu hóa và huấn luyện
+
+- **Bộ tối ưu hóa**: Adam với `learning_rate=0.001`
+- **Hàm mất mát**: `categorical_crossentropy` (vì bài toán phân loại nhiều lớp)
+- **Chỉ số đánh giá**: `accuracy`
+- **Số epoch**: 100
+- **Tập kiểm tra (validation)**: 15% ảnh từ bộ dữ liệu FER2013
+
+---
+
+#### Mã giả (Pseudo-code)
+
+```python
+Input: grayscale images of size 48x48
+Output: emotion class (out of 7 possible classes)
+
+initialize Sequential model
+
+# Convolutional Layers
+Add 2x Conv2D(64 filters, 3x3) + BatchNormalization + ELU
+Add MaxPooling2D(2x2)
+Add 2x Conv2D(128 filters, 3x3) + BatchNormalization + ELU
+Add MaxPooling2D(2x2)
+Add 2x Conv2D(256 filters, 3x3) + BatchNormalization + ELU
+Add MaxPooling2D(2x2)
+Add Dropout
+
+# Fully-connected Layers
+Flatten
+Dense(128, activation='ELU')
+BatchNormalization
+Dropout
+Dense(7, activation='softmax')  # Output layer
+
+# Compile model
+Compile(optimizer=Adam(learning_rate=0.001), 
+        loss='categorical_crossentropy', 
+        metrics=['accuracy'])
+
+# Train model
+model.fit(train_data, validation_data=val_data, epochs=100)
+
+# Output trained model and validation performance
+
+```
+
+## 5. Thực nghiệm
+Sau khi mô hình DCNN được huấn luyện, ta tiến hành đánh giá hiệu suất nhận diện cảm xúc trên **hai tập dữ liệu kiểm thử riêng biệt**:
+
+###  5.1. Tập test từ bộ dữ liệu FER2013
+
+- Đây là phần dữ liệu được tách riêng từ bộ FER2013, chứa 15% ảnh trong mục `test` thuộc tập ảnh chưa từng được sử dụng trong quá trình huấn luyện.
+- Ảnh trong tập này đã được chuẩn hóa theo định dạng 48x48 và grayscale, tương thích trực tiếp với mô hình.
+- Mục tiêu: Kiểm tra khả năng tổng quát hóa (generalization) của mô hình đối với dữ liệu chuẩn hóa từ cùng nguồn.
+
+###  5.2. Tập ảnh thu thập thực tế bên ngoài
+
+- Bao gồm các ảnh khuôn mặt được thu thập từ thực tế, có thể từ webcam, bộ ảnh tổng hợp hoặc do người dùng cung cấp.
+- Trước khi đưa vào mô hình, ảnh được xử lý qua các bước:
+  - **Face detection** (sử dụng Haar Cascade)
+  - **Chuyển sang grayscale**
+  - **Resize về 48x48**
+  - **Chuẩn hóa giá trị pixel**
+
+- Mục tiêu: Đánh giá độ **robust** và khả năng áp dụng thực tiễn của mô hình trong môi trường thực.
+
+---
+
+###  Đầu ra
+
+- Mỗi đầu vào sẽ trả về một vector xác suất gồm 7 phần tử tương ứng với 7 cảm xúc.
+- Cảm xúc có xác suất cao nhất sẽ được chọn làm nhãn dự đoán cuối cùng.
+- Ví dụ:
+[0.05, 0.10, 0.03, 0.60, 0.08, 0.08, 0.06] → Dự đoán: "Happy"
+
+- Đối với tập FER2013, độ chính xác được tính bằng cách so sánh với nhãn thật.
+- Với ảnh thực tế, đánh giá có thể dựa vào quan sát trực quan hoặc phản hồi từ người dùng.
+
+---
+
+>  Mục tiêu: Kiểm chứng tính **chính xác**, **tổng quát hóa**, và **khả năng hoạt động trong thực
+
+## 5.3. Kết quả thực nghiệm
+
+##  Đánh giá hiệu suất mô hình
+
+Sau quá trình huấn luyện và kiểm thử, mô hình được đánh giá trên hai nguồn dữ liệu: **Tập dữ liệu FER2013** và **Tập dữ liệu thực tế thu thập riêng**. Các chỉ số đánh giá mô hình bao gồm Accuracy, Precision, Recall và F1-score như sau:
+
+| Tập dữ liệu       | Accuracy | Precision | Recall  | F1-score |
+|------------------|----------|-----------|---------|----------|
+| FER2013          | 0.7426   | 0.7587    | 0.7426  | 0.7429   |
+| Dữ liệu thực tế  | 0.5704   | 0.7297    | 0.5704  | 0.5195   |
+
+>  Nhận xét:
+-  Mô hình hoạt động tốt trên tập dữ liệu FER2013 với các chỉ số đồng đều và khá cao.
+- Khi áp dụng vào dữ liệu thực tế, Precision vẫn giữ ở mức tốt nhưng Recall và F1-score bị giảm, cho thấy mô hình có xu hướng bỏ sót một số cảm xúc thực tế.
+-  Điều này gợi ý rằng có thể cần thêm dữ liệu thực tế để fine-tune mô hình nhằm tăng độ tổng quát.
+
+## 5.4. Chức năng 
+
+### Chức năng nhận diện cảm xúc thời gian thực
+
+Bên cạnh việc nhận diện cảm xúc từ hình ảnh tĩnh, dự án còn hỗ trợ chức năng nhận diện cảm xúc khuôn mặt trong thời gian thực qua video hoặc webcam tại file `realtime_detection.py` . Cụ thể:
+
+- **Phát hiện khuôn mặt trực tiếp:** Sử dụng mô hình Haar Cascade của OpenCV để phát hiện nhanh khuôn mặt trên từng khung hình video.
+- **Tiền xử lý tức thì:** Các khung hình được chuyển sang ảnh xám, cân bằng sáng và chuẩn hóa ngay lập tức để chuẩn bị cho việc phân loại.
+- **Dự đoán cảm xúc thời gian thực:** Ảnh khuôn mặt đã xử lý được đưa vào mô hình DCNN để dự đoán cảm xúc ngay trên từng khung hình.
+- **Hiển thị kết quả:** Khuôn mặt được đánh dấu khung hình kèm nhãn cảm xúc dự đoán theo thời gian thực trên màn hình.
+- **Ứng dụng thực tiễn:** Tính năng này có thể được áp dụng trong các hệ thống tương tác người - máy, theo dõi phản ứng người dùng, hoặc giám sát tâm trạng trong các môi trường giáo dục, chăm sóc sức khỏe,...
+
+Chức năng nhận diện cảm xúc thời gian thực giúp nâng cao khả năng ứng dụng của mô hình, mang lại trải nghiệm tương tác sinh động và chính xác hơn.
+
+### Chức năng chụp ảnh và gán nhãn để làm giàu tập dữ liệu test
+
+Dự án còn tích hợp chức năng **chụp ảnh khuôn mặt và gán nhãn cảm xúc trực tiếp**, nhằm mục đích mở rộng và làm giàu thêm tập dữ liệu test cho mô hình thông qua file `emotion_capture`. Cụ thể:
+
+- **Chụp ảnh từ webcam hoặc camera:** Người dùng có thể chụp nhanh hình ảnh khuôn mặt trong điều kiện thực tế.
+- **Gán nhãn cảm xúc thủ công:** Sau khi chụp, người dùng sẽ nhập nhãn cảm xúc tương ứng với hình ảnh để đảm bảo dữ liệu đúng và chính xác.
+- **Lưu trữ có cấu trúc:** Hình ảnh và nhãn được lưu theo cấu trúc thư mục riêng biệt, phù hợp cho việc sử dụng trong huấn luyện hoặc đánh giá mô hình.
+- **Tăng tính đa dạng cho tập test:** Việc bổ sung dữ liệu mới từ nhiều góc độ, điều kiện ánh sáng và biểu cảm thực tế giúp mô hình được đánh giá và cải thiện chính xác hơn.
+- **Hỗ trợ quy trình huấn luyện lại:** Dữ liệu mới thu thập có thể được tích hợp để fine-tune mô hình, nâng cao hiệu quả nhận diện cảm xúc trong môi trường thực tế.
+
+Chức năng này giúp thu thập dữ liệu một cách linh hoạt, đảm bảo mô hình không bị phụ thuộc quá nhiều vào dữ liệu gốc mà có thể thích nghi tốt với các trường hợp thực tế đa dạng hơn.
+
+## 5.5. Cải thiện
+### Những điều cần làm để cải thiện mô hình
+
+Để nâng cao hiệu quả và độ chính xác của mô hình nhận diện cảm xúc khuôn mặt, các hướng phát triển trong tương lai gồm:
+
+- **Làm giàu tập dữ liệu:** 
+  - Xây dựng và thu thập thêm bộ dữ liệu riêng biệt với đa dạng biểu cảm, góc mặt và điều kiện ánh sáng.
+  - Tự xây dựng tập train và validation phù hợp, thay vì chỉ dựa vào bộ dữ liệu FER2013, giúp mô hình phù hợp hơn với dữ liệu thực tế.
+  
+- **Cải thiện tiền xử lý ảnh:** 
+  - Nghiên cứu thêm các kỹ thuật xử lý ảnh nâng cao như cân bằng sáng tự động, lọc nhiễu, và augmentation để dữ liệu đa dạng hơn.
+  - Tối ưu các bước phát hiện và cắt khuôn mặt để giảm sai số trong giai đoạn tiền xử lý.
+
+- **Tối ưu mô hình:** 
+  - Thử nghiệm các kiến trúc mạng sâu hơn hoặc các kỹ thuật học chuyển giao (transfer learning) phù hợp.
+  - Điều chỉnh tham số huấn luyện như learning rate, batch size, hoặc sử dụng kỹ thuật regularization để tránh overfitting.
+
+- **Phát triển tính năng nhận diện thời gian thực:** 
+  - Tăng độ ổn định và tốc độ xử lý để ứng dụng thực tế hiệu quả hơn.
+
+Việc thực hiện các bước này sẽ giúp mô hình đạt hiệu suất cao hơn và ứng dụng rộng rãi trong thực tế.
+
+# 6. Tổng kết
+## Tổng kết dự án
+
+Bài toán nhận diện cảm xúc khuôn mặt là một thách thức quan trọng trong lĩnh vực thị giác máy tính với nhiều ứng dụng thực tiễn trong giáo dục, y tế, tiếp thị và bảo mật. Trong dự án này, chúng tôi đã xây dựng một mô hình Deep Convolutional Neural Network (DCNN) từ đầu, sử dụng dữ liệu ảnh khuôn mặt được tiền xử lý kỹ càng (chuyển sang ảnh xám, cân bằng sáng, chuẩn hóa kích thước) để nhận diện chính xác 7 cảm xúc khác nhau. Mô hình được huấn luyện và đánh giá trên cả dữ liệu thực tế và bộ dữ liệu chuẩn FER2013, đạt được kết quả khả quan với độ chính xác và F1-score ổn định.
+
+Ngoài ra, hệ thống còn hỗ trợ nhận diện cảm xúc thời gian thực qua webcam và có tính năng chụp ảnh gán nhãn nhằm làm giàu tập dữ liệu test, giúp nâng cao hiệu quả mô hình trong ứng dụng thực tế. Mặc dù kết quả đã tốt, dự án vẫn còn nhiều tiềm năng cải thiện như mở rộng tập dữ liệu, nâng cao bước tiền xử lý và thử nghiệm các kiến trúc mạng sâu hơn để tăng độ chính xác và khả năng tổng quát của mô hình.
+
 
