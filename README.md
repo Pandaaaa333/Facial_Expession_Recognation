@@ -96,3 +96,64 @@ Nhờ có độ sâu lớn với nhiều lớp, DCNN có khả năng học các 
 
 Ta sẽ tiền sử lí dữ liệu thu thập được để đưa vào test với mô hình đã xây dựng.
 
+### 4.2.1. Nhận diện khuôn mặt bằng Haar Cascade
+#### Các bước xử lý:
+
+- Sử dụng phương thức `detectMultiScale()`, thuật toán sẽ quét ảnh ở nhiều tỷ lệ khác nhau để xác định vị trí khuôn mặt.
+- Một số tham số quan trọng:
+  - `scaleFactor=1.1`: giảm kích thước ảnh 10% sau mỗi lần quét để phát hiện khuôn mặt ở nhiều kích cỡ khác nhau.
+  - `minNeighbors=5`: số lượng vùng lân cận tối thiểu cần xác nhận để quyết định có phải khuôn mặt thật hay không (giúp giảm false positive).
+  - `minSize=(30, 30)`: kích thước tối thiểu của khuôn mặt cần phát hiện.
+
+Khi khuôn mặt được nhận diện, **OpenCV** sẽ vẽ **hình chữ nhật** xung quanh khuôn mặt và hiển thị kết quả đầu ra.
+
+### 4.2.2. Cân bằng sáng và độ tương phản bằng phương pháp Histogram Equalization và CLAHE
+
+####  Histogram Equalization
+
+Phương pháp **Histogram Equalization** được sử dụng để phân bố lại mức độ sáng trên toàn bộ ảnh, giúp làm rõ các chi tiết trong vùng tối hoặc sáng quá mức. OpenCV cung cấp hàm `cv2.equalizeHist()` để thực hiện việc này một cách hiệu quả.
+
+>  Tuy nhiên, Histogram Equalization có thể gây mất chi tiết nếu độ sáng thay đổi quá mạnh trên ảnh.
+
+####  CLAHE (Contrast Limited Adaptive Histogram Equalization)
+
+Để khắc phục nhược điểm của Histogram Equalization, phương pháp **CLAHE** được áp dụng. CLAHE chia ảnh thành các vùng nhỏ và thực hiện cân bằng sáng riêng cho từng vùng, giúp giữ lại chi tiết ở những khu vực có độ tương phản thấp.
+
+- **Các tham số quan trọng:**
+  - `clipLimit=2.0`: giới hạn điều chỉnh độ tương phản để tránh làm sáng quá mức.
+  - `tileGridSize=(8, 8)`: số lượng vùng chia nhỏ trong ảnh.
+
+Khi áp dụng CLAHE, ảnh đầu vào trở nên rõ ràng hơn, giúp mô hình nhận diện khuôn mặt chính xác hơn trong nhiều điều kiện ánh sáng khác nhau.
+
+#### Resize và chuẩn hóa dữ liệu
+
+Trong quá trình tiền xử lý ảnh, việc chuẩn hóa kích thước và giá trị pixel là bước thiết yếu để đảm bảo dữ liệu đầu vào đồng nhất và phù hợp với mô hình học sâu.
+
+####  Thay đổi kích thước ảnh
+
+Sử dụng phương thức `cv2.resize()`, thuật toán sẽ thay đổi kích thước ảnh về một giá trị cố định, phổ biến là **48x48** pixel. Việc này giúp:
+- Đảm bảo tính đồng nhất giữa các ảnh đầu vào.
+- Giảm độ phức tạp tính toán.
+- Giúp mạng CNN dễ dàng trích xuất đặc trưng mà không bị ảnh hưởng bởi sự chênh lệch kích thước ảnh.
+
+#### Chuẩn hóa giá trị pixel
+
+Sau khi resize, dữ liệu được chuẩn hóa bằng cách chia toàn bộ giá trị pixel cho 255, đưa các giá trị về khoảng **[0, 1]**. Phương pháp này giúp:
+- Giảm sự chênh lệch độ sáng giữa các ảnh.
+- Giúp mô hình hội tụ nhanh hơn trong quá trình huấn luyện.
+
+Khi ảnh đã được resize và chuẩn hóa, nó có thể được đưa vào mô hình **CNN** để thực hiện **nhận diện cảm xúc** một cách hiệu quả.
+
+## Kiến trúc mạng DCNN
+
+Đầu vào là tập `train` và `val` thuộc thư mục `dataset_split` trong đó :
+###  Tập `train`
+- Dùng để **huấn luyện mô hình**, giúp mô hình học các đặc trưng từ ảnh và tối ưu các tham số (weights).
+- Các nhãn cảm xúc tương ứng giúp mô hình học cách phân loại ảnh chính xác.
+
+###  Tập `val`
+- Dùng để **đánh giá hiệu suất mô hình trong quá trình huấn luyện**.
+- Giúp:
+  - Phát hiện **overfitting** (mô hình học quá kỹ trên dữ liệu huấn luyện).
+  - Điều chỉnh các **hyperparameters** như số epoch, learning rate, số lớp,...
+
