@@ -68,6 +68,8 @@ F1-score = 2 × (Precision × Recall) / (Precision + Recall)
 
 # 3. Mô hình sử dụng
 
+# <img src="pic/tongquat.png" alt="" width="400" style="border-radius: 10px; margin-top: 0px;"/>
+
 Đây sẽ là kiến trúc được sử dụng trong đồ án này. Đồ án sẽ không sử dụng **transfer learning** mà sẽ xây dựng một mạng **DCNN cơ bản** để giải quyết bài toán nhận diện cảm xúc khuôn mặt.
 
 DCNN là một loại mạng nơ-ron tích chập sâu, được sử dụng rộng rãi trong lĩnh vực thị giác máy tính để xử lý và phân tích hình ảnh. DCNN là phiên bản mở rộng của mạng CNN (Convolutional Neural Network), với nhiều lớp hơn nhằm tăng cường khả năng trích xuất đặc trưng và học biểu diễn phức tạp.
@@ -98,6 +100,8 @@ Ta sẽ tiền sử lí dữ liệu thu thập được để đưa vào test v�
 
 ### 4.2.1. Nhận diện khuôn mặt bằng Haar Cascade
 #### Các bước xử lý:
+
+# <img src="pic/cascade.png" alt="" width="400" style="border-radius: 10px; margin-top: 0px;"/>
 
 - Sử dụng phương thức `detectMultiScale()`, thuật toán sẽ quét ảnh ở nhiều tỷ lệ khác nhau để xác định vị trí khuôn mặt.
 - Một số tham số quan trọng:
@@ -161,6 +165,7 @@ Khi ảnh đã được resize và chuẩn hóa, nó có thể được đưa v�
 
 Mô hình Deep Convolutional Neural Network (DCNN) được thiết kế từ đầu, không sử dụng transfer learning. Kiến trúc chi tiết như sau:
 
+# <img src="pic/model.png" alt="" width="400" style="border-radius: 10px; margin-top: 0px;"/>
 ####  Cấu trúc mạng
 
 - **Lớp tích chập đầu tiên**:  
